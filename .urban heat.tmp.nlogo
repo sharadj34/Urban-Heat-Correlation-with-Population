@@ -1,59 +1,122 @@
-globals [ year-data population-data temperature-data
-          current-year population temperature humidity wind-speed ]
-patches-own [ heat-level ]  ; Each patch stores its own heat intensity
-turtles-own [ heat-contribution ]  ; Each person contributes to heat
+globals [
+  year total-population avg-temperature urban-heat-index
+  built-up-temp vegetation-temp pollution-temp traffic-temp
+]
 
+
+turtles-own [heat-contribution]
+patches-own [temperature built-up vegetation pollution traffic]
+
+;; Initialize the simulation
 
 to setup
-  clear-all  ; Clears previous simulations
-  reset-ticks  ; Resets the time counter
-
-  ; Set initial climate conditions
-  set population 18000000  ; Approximate Delhi population (adjust as needed)
-  set temperature 25  ; Initial base temperature
-  set humidity 50  ; Default humidity level
-  set wind-speed 5  ; Default wind speed
-
-  ; Create people (turtles)
-  create-turtles 100 [  ; Creates 100 people
-    setxy random-xcor random-ycor  ; Place them randomly
-    set shape "person"  ; Assign a human shape
-    set color blue  ; Assign blue color for identification
-  ]
-
-  ; Set heat levels for patches
-  ask patches [
-    set heat-level random 10  ; Assign a random base heat level (0 to 10)
-  ]
-
-  ; Update the visualization
-  update-heatmap
+  clear-all
+  set year 1995
+  setup-environment
+  setup-population
+  reset-ticks
 end
 
-to update-heatmap
+;; Setup environment with real dataset values
+
+to setup-environment
   ask patches [
-    if heat-level < 3 [ set pcolor blue ]  ; Cool areas
-    if heat-level >= 3 and heat-level < 6 [ set pcolor yellow ]  ; Moderate heat
-    if heat-level >= 6 [ set pcolor red ]  ; High heat areas
+    set built-up random-float 100
+    set vegetation random-float 100
+    set pollution random-float 100
+    set traffic random-float 100
+    set temperature calculate-initial-temperature
   ]
 end
 
+;; Initialize agents representing population clusters
 
-to update-year
-  let index position current-year year-data  ; Find the index of the current year
-  if index != false [
-    set population item index population-data  ; Update population
-    set temperature item index temperature-data  ; Update temperature
+to setup-population
+  create-turtles total-population [
+    setxy random-xcor random-ycor
+    set color red
+    set size 1
+    set heat-contribution random-float 5
   ]
-  set current-year current-year + 1  ; Move to the next year
+end
+
+;; Main simulation loop
+
+to go
+  if year > 2024 [ stop ]
+  update-environment
+  update-population
+  calculate-urban-heat-index
+  update-visualization
+  set year year + 1
+  tick
+end
+
+;; Update environmental parameters
+
+to update-environment
+  ask patches [
+    set built-up built-up + (random-float 2 - 1)
+    set vegetation vegetation - (random-float 2)
+    set pollution pollution + (random-float 2)
+    set traffic traffic + (random-float 2)
+    set temperature calculate-temperature
+  ]
+end
+
+;; Update population growth and heat contribution
+
+to update-population
+  if total-population < 2000 [
+    create-turtles 10 [
+      setxy random-xcor random-ycor
+      set color red
+      set size 1
+      set heat-contribution random-float 5
+    ]
+    set total-population total-population + 10
+  ]
+end
+
+;; Calculate temperature dynamically
+
+to-report calculate-temperature
+  report built-up * 0.05 - vegetation * 0.03 + pollution * 0.02 + traffic * 0.04
+end
+
+to-report calculate-initial-temperature
+  report 25 + random-float 5 ;; Base temperature with variation
+end
+
+;; Calculate the urban heat index
+
+to calculate-urban-heat-index
+  set avg-temperature mean [temperature] of patches
+  set built-up-temp mean [temperature] of patches with [built-up > 50]
+  set vegetation-temp mean [temperature] of patches with [vegetation > 50]
+  set pollution-temp mean [temperature] of patches with [pollution > 50]
+  set traffic-temp mean [temperature] of patches with [traffic > 50]
+  set urban-heat-index avg-temperature - 25
+end
+
+
+;; Update visualization
+
+to update-visualization
+  ask patches [
+    set pcolor scale-color red temperature 20 40
+  ]
+  ask turtles [
+    set size heat-contribution / 2
+  ]
 end
 
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
+97
 10
-647
-448
+638
+552
 -1
 -1
 13.0
@@ -66,10 +129,10 @@ GRAPHICS-WINDOW
 1
 1
 1
--16
-16
--16
-16
+-20
+20
+-20
+20
 0
 0
 1
@@ -77,11 +140,11 @@ ticks
 30.0
 
 BUTTON
-109
-66
-172
-99
-Setup
+670
+38
+733
+71
+setup
 setup
 NIL
 1
@@ -94,13 +157,13 @@ NIL
 1
 
 BUTTON
-716
-45
-801
-78
-Load Data
-load-data
-NIL
+668
+83
+731
+116
+go
+go
+T
 1
 T
 OBSERVER
@@ -111,12 +174,12 @@ NIL
 1
 
 BUTTON
-708
-99
-813
-132
-UPDATE YEAR
-update-year
+667
+124
+760
+157
+Export Data
+export-data
 NIL
 1
 T
@@ -126,6 +189,112 @@ NIL
 NIL
 NIL
 1
+
+SLIDER
+674
+201
+846
+234
+population-growth
+population-growth
+0.5
+5
+0.5
+0.1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+673
+253
+845
+286
+traffic-impact
+traffic-impact
+0.5
+5
+2.9
+0.1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+673
+308
+845
+341
+temperature-scale
+temperature-scale
+0.5
+3
+1.1
+0.1
+1
+NIL
+HORIZONTAL
+
+MONITOR
+677
+359
+734
+404
+Year
+year
+0
+1
+11
+
+MONITOR
+676
+417
+788
+462
+Avg Temperature
+avg-temperature
+2
+1
+11
+
+PLOT
+895
+27
+1454
+289
+Temperature Over Time
+Year
+Temperature (°C)
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"Avg Temp" 1.0 0 -7500403 true "" "plot avg-temperature"
+
+PLOT
+894
+302
+1455
+588
+Temperature by Land Type
+Years
+Temperature (°C)
+0.0
+10.0
+0.0
+10.0
+true
+false
+"create-temporary-plot-pen \"Built-Up\" \nset-plot-pen-color red\n\ncreate-temporary-plot-pen \"Vegetation\" \nset-plot-pen-color green\n\ncreate-temporary-plot-pen \"Pollution\" \nset-plot-pen-color gray\n\ncreate-temporary-plot-pen \"Traffic\" \nset-plot-pen-color blue\n" "set-current-plot \"Temperature by Land Type\"\nset-current-plot-pen \"Built-Up\"\nplotxy year built-up-temp\n\nset-current-plot-pen \"Vegetation\"\nplotxy year vegetation-temp\n\nset-current-plot-pen \"Pollution\"\nplotxy year pollution-temp\n\nset-current-plot-pen \"Traffic\"\nplotxy year traffic-temp\n"
+PENS
+"Built-Up" 1.0 0 -7500403 true "" "plot mean [built-up] of patches"
+"Vegetation" 1.0 0 -2674135 true "" "plot mean [vegetation] of patches"
+"Pollution" 1.0 0 -955883 true "" "plot mean [pollution] of patches"
+"Traffic" 1.0 0 -6459832 true "" "plot mean [traffic] of patches"
 
 @#$#@#$#@
 ## WHAT IS IT?
