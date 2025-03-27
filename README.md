@@ -39,7 +39,3 @@ The repository contains:
 
 ## Contact
 For any questions or collaborations, please open an issue or contact the authors through GitHub.
-
----
-**License**: This project is open-source under the MIT License.
-
